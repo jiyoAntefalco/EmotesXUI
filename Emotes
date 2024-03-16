@@ -10,12 +10,12 @@ local Success, Return = pcall(function()
 end)
 
 if (Success) then
-	ScreenGui = Return
-	if (ScreenGui) then
-		ScreenGui.Parent = CoreGui
+	Outside = Return
+	if (Outside) then
+		Outside.Parent = CoreGui
 	end
 else
-	if (not ScreenGui) then
+	if (not Outside) then
 		return
 	end
 end
