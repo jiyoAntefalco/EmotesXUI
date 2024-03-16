@@ -1,0 +1,1258 @@
+local CoreGui = game:GetService('CoreGui')
+local Asset = {
+	['EmotesX'] = "rbxassetid://16766820537",
+}
+
+local Outside = nil
+
+local Success, Return = pcall(function()
+	return game:GetObjects(Asset.EmotesX)[1]
+end)
+
+if (Success) then
+	ScreenGui = Return
+	if (ScreenGui) then
+		ScreenGui.Parent = CoreGui
+	end
+else
+	if (not ScreenGui) then
+		return
+	end
+end
+
+local module = {}
+
+-- // Services // --
+
+local MarketplaceService = game:GetService('MarketplaceService')
+local Players = game:GetService('Players')
+local InsertService = game:GetService('InsertService')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local Lighting = game:GetService('Lighting')
+
+-- // Gui Objects // --
+
+local Emotes = Outside.Emotes
+local EmoteList = Emotes.EmoteList
+
+local EmotesUI = EmoteList.EmotesUI
+local EmoteObject = EmotesUI.Main
+
+local MainEmoteButton = Outside.EmoteButton
+
+-- // Selected // --
+
+local SelectedObject = nil
+local SelectedAnimation = nil
+local Enabled = false
+
+-- // ModuleScripts & Functions // --
+
+local Animate = function(Obj, Time, Direction, Style, Properties, Play, Callback)
+	local TS = game:GetService('TweenService')
+	local Create = TS:Create(
+		Obj,
+		TweenInfo.new(
+			Time,
+			Enum.EasingStyle[Style],
+			Enum.EasingDirection[Direction],
+			0,
+			false,
+			0
+		),
+		Properties
+	)
+	if (Play) then
+		Create:Play()
+	end
+	if (Callback) then
+		Create.Completed:Connect(Callback)
+	end
+	return Create
+end
+
+local function FindObject(From, Name)
+	if (From:FindFirstChild(Name)) then
+		return From:FindFirstChild(Name)
+	else
+		return nil
+	end
+end
+
+local Colors = {
+	LessWhite = Color3.fromRGB(161, 161, 161),
+	White = Color3.fromRGB(255, 255, 255),
+	Dark = Color3.fromRGB(20, 20, 20),
+	LessDark = Color3.fromRGB(40, 40, 40)
+}
+
+local function SelectedBtn(Obj, V)
+	if (V == true) then
+		if (FindObject(Obj, 'Label')) then
+			local Label = FindObject(Obj, 'Label')
+			Animate(Label, 1, 'Out', 'Quad', {TextColor3 = Colors.Dark, BackgroundColor3 = Colors.White}, true)
+		end
+		if (FindObject(Obj, 'Icon')) then
+			local Icon = FindObject(Obj, 'Icon')
+			Animate(Icon, 1, 'Out', 'Quad', {ImageColor3 = Colors.Dark}, true)
+			Animate(Obj, 1, 'Out', 'Quad', {TextColor3 = Colors.Dark, BackgroundColor3 = Colors.White}, true)
+		end
+	elseif (V == false) then
+		if (FindObject(Obj, 'Label')) then
+			local Label = FindObject(Obj, 'Label')
+			Animate(Label, 1, 'Out', 'Quad', {TextColor3 = Colors.White, BackgroundColor3 = Colors.Dark}, true)
+		end
+		if (FindObject(Obj, 'Icon')) then
+			local Icon = FindObject(Obj, 'Icon')
+			Animate(Icon, 1, 'Out', 'Quad', {ImageColor3 = Colors.White}, true)
+			Animate(Obj, 1, 'Out', 'Quad', {TextColor3 = Colors.White, BackgroundColor3 = Colors.Dark}, true)
+		end
+	end
+end
+
+local function SetCameraFOV(Bool)
+	if (Bool == true) then
+		if (FindObject(workspace, 'Camera')) then
+			local CurrentCamera = FindObject(workspace, 'Camera')
+			Animate(CurrentCamera, 0.42, 'Out', 'Quart', {FieldOfView = 30}, true)
+		end
+	else
+		if (FindObject(workspace, 'Camera')) then
+			local CurrentCamera = FindObject(workspace, 'Camera')
+			Animate(CurrentCamera, 0.6, 'Out', 'Quart', {FieldOfView = 70}, true)
+		end
+	end
+end
+
+local function SetLighting(Bool)
+	if (Bool == true) then
+		if (FindObject(Lighting, 'BlurEffect_1')) then
+			local Blur = FindObject(Lighting, 'BlurEffect_1')
+			Animate(Blur, 1, 'Out', 'Quad', {Size = 24}, true)
+		end
+		if (FindObject(Lighting, 'ColorCorrection_1')) then
+			local ColorCorrection = FindObject(Lighting, 'ColorCorrection_1')
+			Animate(ColorCorrection, 1, 'Out', 'Sine', {TintColor = Colors.LessDark}, true)
+		end
+	else
+		if (FindObject(Lighting, 'BlurEffect_1')) then
+			local Blur = FindObject(Lighting, 'BlurEffect_1')
+			Animate(Blur, 1, 'Out', 'Quad', {Size = 0}, true)
+		end
+		if (FindObject(Lighting, 'ColorCorrection_1')) then
+			local ColorCorrection = FindObject(Lighting, 'ColorCorrection_1')
+			Animate(ColorCorrection, 1, 'Out', 'Sine', {TintColor = Colors.White}, true)
+		end
+	end
+end
+
+local function SetAll(Bool)
+	SetLighting(Bool)
+	SetCameraFOV(Bool)
+end
+
+local BlurEffect_1 = Instance.new("BlurEffect")
+BlurEffect_1.Name = 'BlurEffect_1'
+BlurEffect_1.Size = 0
+BlurEffect_1.Parent = Lighting
+BlurEffect_1.Enabled = true
+
+local ColorCorrection_1 = Instance.new("ColorCorrectionEffect")
+ColorCorrection_1.Name = 'ColorCorrection_1'
+ColorCorrection_1.TintColor = Colors.White
+ColorCorrection_1.Parent = Lighting
+ColorCorrection_1.Enabled = true
+
+-- // RGBS // --
+
+local FromRGB = Color3.fromRGB
+
+local SCALE_TAG = "UIScale"
+local SCALE_ATTRIBUTE = "Scale"
+local RESOLUTION_ATTRIBUTE = "Resolution"
+
+local DEFAULT_SCALE = 1
+local DEFAULT_RESOLUTION = 800
+
+local Collection = game:GetService("CollectionService")
+
+local camera = workspace.CurrentCamera
+
+local currentScale = script:GetAttribute(SCALE_ATTRIBUTE)
+if currentScale == nil then
+	currentScale = DEFAULT_SCALE
+	script:SetAttribute(SCALE_ATTRIBUTE, currentScale)
+end
+
+local resolution = script:GetAttribute(RESOLUTION_ATTRIBUTE)
+if resolution == nil then
+	resolution = DEFAULT_RESOLUTION
+	script:SetAttribute(RESOLUTION_ATTRIBUTE, resolution)
+end
+
+local multiplier = 1/resolution
+
+local scales = {}
+
+local function applyScale(scale)
+	scale.Scale = currentScale
+end
+
+local function scaleAdded(scale)
+	assert(scale:IsA("UIScale"), scale:GetFullName() .. " is not a UIScale")
+
+	applyScale(scale)
+	table.insert(scales, scale)
+end
+
+local function scaleRemoved(scale)
+	local index = table.find(scales, scale)
+	if index then
+		table.remove(scales, index)
+	end
+end
+
+local function updateScale()
+	local sizeX, sizeY = camera.ViewportSize.X, camera.ViewportSize.Y
+	if sizeY < sizeX then
+		currentScale = multiplier * sizeY
+	else
+		currentScale = multiplier * sizeX
+	end
+
+	script:SetAttribute(SCALE_ATTRIBUTE, currentScale)
+
+	for i, scale in ipairs(scales) do
+		applyScale(scale)
+	end
+end
+
+for i, scale in ipairs(Collection:GetTagged(SCALE_TAG)) do
+	scaleAdded(scale)
+end
+
+updateScale()
+
+script:GetAttributeChangedSignal(RESOLUTION_ATTRIBUTE):Connect(function()
+	resolution = script:GetAttribute(RESOLUTION_ATTRIBUTE)
+	multiplier = 1/resolution
+	updateScale()
+end)
+camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+Collection:GetInstanceAddedSignal(SCALE_TAG):Connect(scaleAdded)
+Collection:GetInstanceRemovedSignal(SCALE_TAG):Connect(scaleRemoved)
+
+game:GetService("CollectionService"):AddTag(Outside.UIScale, "UIScale")
+
+module.Emotes = {
+	["Robot"] = {
+		AssetId = 3576721660,
+		AnimationId = 10714392151
+	},
+	["Fancy Feet"] = {
+		AssetId = 3934988903,
+		AnimationId = 10714076981
+	},
+	["2 Baddies Dance Move - NCT 127"] = {
+		AssetId = 12259890638,
+		AnimationId = 12259828678
+	},
+	["Side to Side"] = {
+		AssetId = 3762641826,
+		AnimationId = 10714366910
+	},
+	["Hello"] = {
+		AssetId = 3576686446,
+		AnimationId = 10714359093
+	},
+	["Lasso Turn - Tai Verdes"] = {
+		AssetId = 7942972744,
+		AnimationId = 10714382225
+	},
+	["TWICE LIKEY"] = {
+		AssetId = 14900151704,
+		AnimationId = 14899979575
+	},
+	["Point2"] = {
+		AssetId = 3576823880,
+		AnimationId = 10714395441
+	},
+	["Paris Hilton Sanasa"] = {
+		AssetId = 16126526506,
+		AnimationId = 16126469463
+	},
+	["Haha"] = {
+		AssetId = 4102315500,
+		AnimationId = 10714350889
+	},
+	["Baby Queen - Face Frame"] = {
+		AssetId = 14353421343,
+		AnimationId = 14352340648
+	},
+	["Power Blast"] = {
+		AssetId = 4849497510,
+		AnimationId = 10714389396
+	},
+	["Agree"] = {
+		AssetId = 4849487550,
+		AnimationId = 10713954623
+	},
+	["Jawny - Stomp"] = {
+		AssetId = 16392120020,
+		AnimationId = 16392075853
+	},
+	["Rodeo Dance - Lil Nas X (LNX)"] = {
+		AssetId = 5938397555,
+		AnimationId = 10714395175
+	},
+	["BLACKPINK Pink Venom - Straight to Ya Dome"] = {
+		AssetId = 14548711723,
+		AnimationId = 14548621256
+	},
+	["Stadium"] = {
+		AssetId = 3360686498,
+		AnimationId = 10714356920
+	},
+	["Top Rock"] = {
+		AssetId = 3570535774,
+		AnimationId = 10714336041
+	},
+	["Dave's Spin Move - Glass Animals"] = {
+		AssetId = 16276501655,
+		AnimationId = 16272432203
+	},
+	["Dizzy"] = {
+		AssetId = 3934986896,
+		AnimationId = 10714066964
+	},
+	["BLACKPINK Shut Down - Part 2"] = {
+		AssetId = 14901371589,
+		AnimationId = 14901308987
+	},
+	["Frosty Flair - Tommy Hilfiger"] = {
+		AssetId = 10214406616,
+		AnimationId = 10214311282
+	},
+	["Bone Chillin' Bop"] = {
+		AssetId = 15123050663,
+		AnimationId = 15122972413
+	},
+	["Tommy K-Pop Mic Drop"] = {
+		AssetId = 14024722653,
+		AnimationId = 14024642130
+	},
+	["HOLIDAY Dance - Lil Nas X (LNX)"] = {
+		AssetId = 5938396308,
+		AnimationId = 10714365721
+	},
+	["GloRilla - 'Tomorrow' Dance"] = {
+		AssetId = 15689315657,
+		AnimationId = 15689278184
+	},
+	["Swish"] = {
+		AssetId = 3821527813,
+		AnimationId = 10714349738
+	},
+	["Old Town Road Dance - Lil Nas X (LNX)"] = {
+		AssetId = 5938394742,
+		AnimationId = 10714391240
+	},
+	["Saturday Dance - Twenty One Pilots"] = {
+		AssetId = 7422833723,
+		AnimationId = 10714382522
+	},
+	["Nicki Minaj Starships"] = {
+		AssetId = 15571540519,
+		AnimationId = 15571453761
+	},
+	["Sneaky"] = {
+		AssetId = 3576754235,
+		AnimationId = 10714358528
+	},
+	["Rock Guitar - Royal Blood"] = {
+		AssetId = 6532155086,
+		AnimationId = 10714393929
+	},
+	["Line Dance"] = {
+		AssetId = 4049646104,
+		AnimationId = 10714383856
+	},
+	["Paris Hilton - Iconic IT-Grrrl"] = {
+		AssetId = 15392932768,
+		AnimationId = 15392756794
+	},
+	["Jacks"] = {
+		AssetId = 3570649048,
+		AnimationId = 10714375667
+	},
+	["Confused"] = {
+		AssetId = 4940592718,
+		AnimationId = 4940561610
+	},
+	["Baby Queen - Strut"] = {
+		AssetId = 14353425085,
+		AnimationId = 14352362059
+	},
+	["Drummer Moves - Twenty One Pilots"] = {
+		AssetId = 7422838770,
+		AnimationId = 10714072822
+	},
+	["Olivia Rodrigo Fall Back to Float"] = {
+		AssetId = 15554016057,
+		AnimationId = 15549124879
+	},
+	["Victory Dance"] = {
+		AssetId = 15506503658,
+		AnimationId = 15505456446
+	},
+	["Paris Hilton - Checking My Angles"] = {
+		AssetId = 15392937495,
+		AnimationId = 15392752812
+	},
+	["Samba"] = {
+		AssetId = 6869813008,
+		AnimationId = 10714386947
+	},
+	["Around Town"] = {
+		AssetId = 3576747102,
+		AnimationId = 10713981723
+	},
+	["Ay-Yo Dance Move - NCT 127"] = {
+		AssetId = 12804173616,
+		AnimationId = 12804157977
+	},
+	["AOK - Tai Verdes"] = {
+		AssetId = 7942960760,
+		AnimationId = 10713962506
+	},
+	["Super Charge"] = {
+		AssetId = 10478368365,
+		AnimationId = 10478338114
+	},
+	["Rock On"] = {
+		AssetId = 5915782672,
+		AnimationId = 10714403700
+	},
+	["Paris Hilton - Sliving For The Groove"] = {
+		AssetId = 15392927897,
+		AnimationId = 15392759696
+	},
+	["Tilt"] = {
+		AssetId = 3360692915,
+		AnimationId = 10714338461
+	},
+	["High Hands"] = {
+		AssetId = 9710994651,
+		AnimationId = 10714361543
+	},
+	["Jumping Wave"] = {
+		AssetId = 4940602656,
+		AnimationId = 10714378156
+	},
+	["ericdoa - dance"] = {
+		AssetId = 15698510244,
+		AnimationId = 15698402762
+	},
+	["Keeping Time"] = {
+		AssetId = 4646306072,
+		AnimationId = 10714380563
+	},
+	["Block Partier"] = {
+		AssetId = 6865011755,
+		AnimationId = 10713988674
+	},
+	["Hero Landing"] = {
+		AssetId = 5104377791,
+		AnimationId = 10714360164
+	},
+	["Take Me Under - Zara Larsson"] = {
+		AssetId = 6797938823,
+		AnimationId = 10714345459
+	},
+	["Cuco - Levitate"] = {
+		AssetId = 15698511500,
+		AnimationId = 15698404340
+	},
+	["BLACKPINK Pink Venom - I Bring the Pain Like…"] = {
+		AssetId = 14548710952,
+		AnimationId = 14548620495
+	},
+	["Wake Up Call - KSI"] = {
+		AssetId = 7202900159,
+		AnimationId = 10714168145
+	},
+	["Floss Dance"] = {
+		AssetId = 5917570207,
+		AnimationId = 10714340543
+	},
+	["Air Guitar"] = {
+		AssetId = 15506499986,
+		AnimationId = 15505454268
+	},
+	["Jumping Cheer"] = {
+		AssetId = 5895009708,
+		AnimationId = 5895324424
+	},
+	["Tommy - Archer"] = {
+		AssetId = 13823339506,
+		AnimationId = 13823324057
+	},
+	["Shy"] = {
+		AssetId = 3576717965,
+		AnimationId = 10714369325
+	},
+	["Fishing"] = {
+		AssetId = 3994129128,
+		AnimationId = 10714101749
+	},
+	["Sidekicks - George Ezra"] = {
+		AssetId = 10370922566,
+		AnimationId = 10370362157
+	},
+	["Olivia Rodrigo good 4 u"] = {
+		AssetId = 15554013003,
+		AnimationId = 15517862739
+	},
+	["Hips Poppin' - Zara Larsson"] = {
+		AssetId = 6797919579,
+		AnimationId = 10714364213
+	},
+	["HIPMOTION - Amaarae"] = {
+		AssetId = 16572756230,
+		AnimationId = 16572740012
+	},
+	["BLACKPINK Pink Venom - Get em Get em Get em"] = {
+		AssetId = 14548709888,
+		AnimationId = 14548619594
+	},
+	["Swan Dance"] = {
+		AssetId = 7466048475,
+		AnimationId = 10714352930
+	},
+	["Panini Dance - Lil Nas X (LNX)"] = {
+		AssetId = 5915781665,
+		AnimationId = 10714394082
+	},
+	["Arm Twist"] = {
+		AssetId = 9710992846,
+		AnimationId = 10713968716
+	},
+	["Dorky Dance"] = {
+		AssetId = 4212499637,
+		AnimationId = 10714069471
+	},
+	["It Ain't My Fault - Zara Larsson"] = {
+		AssetId = 6797948622,
+		AnimationId = 10714374267
+	},
+	["Alo Yoga Pose - Lotus Position"] = {
+		AssetId = 12507097350,
+		AnimationId = 12507085924
+	},
+	["Show Dem Wrists - KSI"] = {
+		AssetId = 7202898984,
+		AnimationId = 10714377090
+	},
+	["YUNGBLUD – HIGH KICK"] = {
+		AssetId = 14022978026,
+		AnimationId = 14022936101
+	},
+	["Y"] = {
+		AssetId = 4391211308,
+		AnimationId = 10714164866
+	},
+	["Dolphin Dance"] = {
+		AssetId = 5938365243,
+		AnimationId = 10714068222
+	},
+	["Cobra Arms - Tai Verdes"] = {
+		AssetId = 7942964447,
+		AnimationId = 10714022275
+	},
+	["Elton John - Elevate"] = {
+		AssetId = 11394056822,
+		AnimationId = 11394033602
+	},
+	["Twirl"] = {
+		AssetId = 3716633898,
+		AnimationId = 10714293450
+	},
+	["Boxing Punch - KSI"] = {
+		AssetId = 7202896732,
+		AnimationId = 10717116749
+	},
+	["Baby Queen - Bouncy Twirl"] = {
+		AssetId = 14353423348,
+		AnimationId = 14352343065
+	},
+	["Rock Star - Royal Blood"] = {
+		AssetId = 6533100850,
+		AnimationId = 10714400171
+	},
+	["Tree"] = {
+		AssetId = 4049634387,
+		AnimationId = 10714330764
+	},
+	["Cha Cha"] = {
+		AssetId = 6865013133,
+		AnimationId = 6862001787
+	},
+	["Elton John - Rock Out"] = {
+		AssetId = 11753545334,
+		AnimationId = 11753474067
+	},
+	["Salute"] = {
+		AssetId = 3360689775,
+		AnimationId = 10714389988
+	},
+	["Up and Down - Twenty One Pilots"] = {
+		AssetId = 7422843994,
+		AnimationId = 10714174918
+	},
+	["Idol"] = {
+		AssetId = 4102317848,
+		AnimationId = 10714372526
+	},
+	["Curtsy"] = {
+		AssetId = 4646306583,
+		AnimationId = 10714061912
+	},
+	["Boom Boom Clap - George Ezra"] = {
+		AssetId = 10370934040,
+		AnimationId = 10370346995
+	},
+	["High Wave"] = {
+		AssetId = 5915776835,
+		AnimationId = 10714362852
+	},
+	["Baby Dance"] = {
+		AssetId = 4272484885,
+		AnimationId = 10713983178
+	},
+	["Sol de Janeiro - Samba"] = {
+		AssetId = 16276506814,
+		AnimationId = 16270690701
+	},
+	["Cower"] = {
+		AssetId = 4940597758,
+		AnimationId = 4940563117
+	},
+	["Dancin' Shoes - Twenty One Pilots"] = {
+		AssetId = 7405123844,
+		AnimationId = 10714063823
+	},
+	["d4vd - Backflip"] = {
+		AssetId = 15694504637,
+		AnimationId = 15693621070
+	},
+	["Baby Queen - Dramatic Bow"] = {
+		AssetId = 14353419229,
+		AnimationId = 14352337694
+	},
+	["Olivia Rodrigo Head Bop"] = {
+		AssetId = 15554010118,
+		AnimationId = 15517864808
+	},
+	["Flex Walk"] = {
+		AssetId = 15506506103,
+		AnimationId = 15505459811
+	},
+	["Monkey"] = {
+		AssetId = 3716636630,
+		AnimationId = 10714388352
+	},
+	["Bodybuilder"] = {
+		AssetId = 3994130516,
+		AnimationId = 10713990381
+	},
+	["Applaud"] = {
+		AssetId = 5915779043,
+		AnimationId = 10713966026
+	},
+	["Fast Hands"] = {
+		AssetId = 4272351660,
+		AnimationId = 10714100539
+	},
+	["Shrug"] = {
+		AssetId = 3576968026,
+		AnimationId = 10714374484
+	},
+	["Beckon"] = {
+		AssetId = 5230615437,
+		AnimationId = 10713984554
+	},
+	["Nicki Minaj Boom Boom Boom"] = {
+		AssetId = 15571538346,
+		AnimationId = 15571448688
+	},
+	["Godlike"] = {
+		AssetId = 3823158750,
+		AnimationId = 10714347256
+	},
+	["Quiet Waves"] = {
+		AssetId = 7466046574,
+		AnimationId = 10714390497
+	},
+	["Zombie"] = {
+		AssetId = 4212496830,
+		AnimationId = 10714089137
+	},
+	["Get Out"] = {
+		AssetId = 3934984583,
+		AnimationId = 10714345862
+	},
+	["Greatest"] = {
+		AssetId = 3762654854,
+		AnimationId = 10714349037
+	},
+	["Bored"] = {
+		AssetId = 5230661597,
+		AnimationId = 10713992055
+	},
+	["Rise Above - The Chainsmokers"] = {
+		AssetId = 13071993910,
+		AnimationId = 12992262118
+	},
+	["TWICE I GOT YOU part 1"] = {
+		AssetId = 16215060261,
+		AnimationId = 16215030041
+	},
+	["Imagine Dragons - “Bones” Dance"] = {
+		AssetId = 15689314578,
+		AnimationId = 15689279687
+	},
+	["Sad"] = {
+		AssetId = 4849502101,
+		AnimationId = 10714392876
+	},
+	["Yungblud Happier Jump"] = {
+		AssetId = 15610015346,
+		AnimationId = 15609995579
+	},
+	["Mean Girls Dance Break"] = {
+		AssetId = 15963348695,
+		AnimationId = 15963314052
+	},
+	["Louder"] = {
+		AssetId = 3576751796,
+		AnimationId = 10714385204
+	},
+	["Rock n Roll"] = {
+		AssetId = 15506496093,
+		AnimationId = 15505458452
+	},
+	["On The Outside - Twenty One Pilots"] = {
+		AssetId = 7422841700,
+		AnimationId = 10714392953
+	},
+	["Break Dance"] = {
+		AssetId = 5915773992,
+		AnimationId = 10714003221
+	},
+	["Festive Dance"] = {
+		AssetId = 15679955281,
+		AnimationId = 15679621440
+	},
+	["Happy"] = {
+		AssetId = 4849499887,
+		AnimationId = 10714352626
+	},
+	["TWICE I GOT YOU part 2"] = {
+		AssetId = 16256253954,
+		AnimationId = 16256203246
+	},
+	["Alo Yoga Pose - Triangle"] = {
+		AssetId = 12507120275,
+		AnimationId = 12507084541
+	},
+	["Disagree"] = {
+		AssetId = 4849495710,
+		AnimationId = 10714065135
+	},
+	["Shuffle"] = {
+		AssetId = 4391208058,
+		AnimationId = 10714371274
+	},
+	["Floor Rock Freeze - Tommy Hilfiger"] = {
+		AssetId = 10214411646,
+		AnimationId = 10214314957
+	},
+	["Elton John - Cat Man"] = {
+		AssetId = 11435175895,
+		AnimationId = 11444441914
+	},
+	["Wanna play?"] = {
+		AssetId = 16646438742,
+		AnimationId = 16646423316
+	},
+	["Drum Master - Royal Blood"] = {
+		AssetId = 6531538868,
+		AnimationId = 10714070681
+	},
+	["Sticker Dance Move - NCT 127"] = {
+		AssetId = 12259885838,
+		AnimationId = 12259825026
+	},
+	["Mae Stephens - Piano Hands"] = {
+		AssetId = 16553249658,
+		AnimationId = 16553163212
+	},
+	["Elton John - Piano Jump"] = {
+		AssetId = 11453096488,
+		AnimationId = 11453082181
+	},
+	["Mae Stephens – Arm Wave"] = {
+		AssetId = 16584496781,
+		AnimationId = 16584481352
+	},
+	["T"] = {
+		AssetId = 3576719440,
+		AnimationId = 10714347453
+	},
+	["Elton John - Heart Skip"] = {
+		AssetId = 11309263077,
+		AnimationId = 11309255148
+	},
+	["BLACKPINK Shut Down - Part 1"] = {
+		AssetId = 14901369589,
+		AnimationId = 14901306096
+	},
+	["Beauty Touchdown"] = {
+		AssetId = 16303091119,
+		AnimationId = 16302968986
+	},
+	["Kick It Dance Move - NCT 127"] = {
+		AssetId = 12259888240,
+		AnimationId = 12259826609
+	},
+	["V Pose - Tommy Hilfiger"] = {
+		AssetId = 10214418283,
+		AnimationId = 10214319518
+	},
+	["Elton John - Still Standing"] = {
+		AssetId = 11435177473,
+		AnimationId = 11444443576
+	},
+	["Drum Solo - Royal Blood"] = {
+		AssetId = 6532844183,
+		AnimationId = 10714074218
+	},
+	["Flowing Breeze"] = {
+		AssetId = 7466047578,
+		AnimationId = 10714342957
+	},
+	["Sleep"] = {
+		AssetId = 4689362868,
+		AnimationId = 10714360343
+	},
+	["Alo Yoga Pose - Warrior II"] = {
+		AssetId = 12507106431,
+		AnimationId = 12507083048
+	},
+	["Cartwheel - George Ezra"] = {
+		AssetId = 10370929905,
+		AnimationId = 10370351535
+	},
+	["Mean Mug - Tommy Hilfiger"] = {
+		AssetId = 10214415687,
+		AnimationId = 10214317325
+	},
+	["Tantrum"] = {
+		AssetId = 5104374556,
+		AnimationId = 10714340558
+	},
+	["TWICE Feel Special"] = {
+		AssetId = 14900153406,
+		AnimationId = 14899980745
+	},
+	["Chill Vibes - George Ezra"] = {
+		AssetId = 10370918044,
+		AnimationId = 10370353969
+	},
+	["Uprise - Tommy Hilfiger"] = {
+		AssetId = 10275057230,
+		AnimationId = 10275008655
+	},
+	["Air Dance"] = {
+		AssetId = 4646302011,
+		AnimationId = 10713957138
+	},
+	["Celebrate"] = {
+		AssetId = 3994127840,
+		AnimationId = 10714016223
+	},
+	["Fashionable"] = {
+		AssetId = 3576745472,
+		AnimationId = 10714091938
+	},
+	["Baby Queen - Air Guitar & Knee Slide"] = {
+		AssetId = 14353417553,
+		AnimationId = 14352335202
+	}
+}
+
+module.Colors = {
+	[true] = {
+		UIStrokeColor = FromRGB(71, 255, 129),
+		BackgroundNameColor = FromRGB(71, 255, 129),
+		EmoteNameTextColor = FromRGB(20, 20, 20),
+		AssetImageColor = FromRGB(71, 255, 129),
+	},
+	[false] = {
+		UIStrokeColor = FromRGB(70, 70, 70),
+		BackgroundNameColor = FromRGB(40, 40, 40),
+		EmoteNameTextColor = FromRGB(255, 255, 255),
+		AssetImageColor = FromRGB(255, 255, 255),
+	}
+}
+
+module.SelectedEmote = function(Object, Bool)
+	if (Bool == true) then
+		local UIStroke = Object.UIStroke
+		local BackgroundName = Object.BackgroundName
+		local EmoteName = BackgroundName.EmoteName
+		local AssetImage = Object.AssetImage
+
+		local Colors = module.Colors[Bool]
+
+		Animate(UIStroke, 0.6, 'Out', 'Quad', {Color = Colors.UIStrokeColor}, true)
+		Animate(BackgroundName, 0.6, 'Out', 'Quad', {BackgroundColor3 = Colors.BackgroundNameColor}, true)
+		Animate(EmoteName, 0.6, 'Out', 'Quad', {TextColor3 = Colors.EmoteNameTextColor}, true)
+		Animate(AssetImage, 0.6, 'Out', 'Quad', {ImageColor3 = Colors.AssetImageColor}, true)
+	elseif (Bool == false) then
+		local UIStroke = Object.UIStroke
+		local BackgroundName = Object.BackgroundName
+		local EmoteName = BackgroundName.EmoteName
+		local AssetImage = Object.AssetImage
+
+		local Colors = module.Colors[Bool]
+
+		Animate(UIStroke, 0.6, 'Out', 'Quad', {Color = Colors.UIStrokeColor}, true)
+		Animate(BackgroundName, 0.6, 'Out', 'Quad', {BackgroundColor3 = Colors.BackgroundNameColor}, true)
+		Animate(EmoteName, 0.6, 'Out', 'Quad', {TextColor3 = Colors.EmoteNameTextColor}, true)
+		Animate(AssetImage, 0.6, 'Out', 'Quad', {ImageColor3 = Colors.AssetImageColor}, true)
+	end
+end
+
+function module:GetAssetImage(Table)
+	local Asset = Table.AssetId
+	return ('https://www.roblox.com/asset-thumbnail/image?assetId=%d&width=420&height=420&format=png'):format(Asset)
+end
+
+function module:Edit(Table, AssetImageObject, EmoteNameObject, ClonedEmote, NameOfEmote)
+	EmoteNameObject.Text = NameOfEmote
+	AssetImageObject.Image = module:GetAssetImage(Table)
+	ClonedEmote.Name = NameOfEmote
+end
+
+function module:CreateAnimationByID(ID)
+	local LocalPlayer = Players.LocalPlayer
+	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	if (Character:FindFirstChildOfClass('Humanoid')) then
+		local Humanoid = Character:FindFirstChildOfClass('Humanoid')
+		local LoadedAsset = Instance.new('Animation')
+		LoadedAsset.Parent = Character
+		LoadedAsset.AnimationId = ('http://www.roblox.com/asset/?id='..ID)
+
+		LoadedAsset.AncestryChanged:Connect(function(Child, Parent)
+			if (Parent == nil) then
+				warn('Animation::'..Child.Name..' has been removed')
+			end
+		end)
+
+		local Animation = Humanoid:LoadAnimation(LoadedAsset)
+		Animation.Priority = Enum.AnimationPriority.Action
+		Animation.Looped = true
+		return {
+			AnimationObj = LoadedAsset,
+			EmoteToPlay = Animation,
+			Asset = ID,
+		}
+	end
+end
+
+function module:SetUp()
+
+	repeat print("Waiting for the emote data...") task.wait(1.25) until module.Emotes ~= nil
+
+	local OnDied = nil
+	local Counts = 0
+
+	for Emote, Assets in pairs(module.Emotes) do
+
+		Counts = Counts + 1
+
+		local Enabled = false
+
+		local ClonedEmote = EmoteObject:Clone()
+
+		local BackgroundName, OwnsAsset, AssetImage = ClonedEmote.BackgroundName, ClonedEmote.OwnsAsset, ClonedEmote.AssetImage
+		local EmoteName = BackgroundName.EmoteName
+		local Button = ClonedEmote.Button
+		local AssetIdValue = ClonedEmote.AssetId
+		local CurrentAsset = nil
+
+		AssetIdValue.Value = Assets.AssetId
+
+		module:Edit(Assets, AssetImage, EmoteName, ClonedEmote, Emote)
+
+		ClonedEmote.Visible = true
+		ClonedEmote.Parent = EmoteList
+
+		CurrentAsset = Assets.AnimationId
+
+		Button.MouseButton1Click:Connect(function()
+			if (SelectedObject ~= nil and SelectedObject ~= ClonedEmote) then
+				module.SelectedEmote(SelectedObject, false)
+				Enabled = false
+			end
+			if (SelectedAnimation ~= nil) then
+				SelectedAnimation.AnimationObj:Destroy()	
+				SelectedAnimation.Asset = nil
+				if pcall(function()
+						SelectedAnimation.EmoteToPlay.Looped = false
+						SelectedAnimation.EmoteToPlay.Priority = Enum.AnimationPriority.Core
+						SelectedAnimation.EmoteToPlay:Stop()
+						SelectedAnimation.EmoteToPlay:Remove()
+					end) then
+					SelectedAnimation = nil
+				end
+			end
+
+			SelectedObject = ClonedEmote
+			SelectedAnimation = module:CreateAnimationByID(Assets.AnimationId)
+
+			if (Enabled == false) then
+				Enabled = true
+				if (SelectedAnimation ~= nil) then
+					if (SelectedAnimation.Asset == CurrentAsset) then
+						SelectedAnimation.EmoteToPlay:Play()
+					end
+				end
+				module.SelectedEmote(SelectedObject, Enabled)
+			elseif (Enabled == true) then
+				Enabled = false
+				if (SelectedAnimation ~= nil) then
+					if (SelectedAnimation.Asset == CurrentAsset) then
+						SelectedAnimation.EmoteToPlay:Stop()
+					end
+				end
+				module.SelectedEmote(SelectedObject, Enabled)
+			end
+		end)
+
+		coroutine.resume(coroutine.create(function()
+			local Obj = ClonedEmote
+			local OwnsAsset = Obj.OwnsAsset
+			local AssetId = Obj.AssetId
+
+			if (MarketplaceService:PlayerOwnsAsset(Players.LocalPlayer, AssetId)) then
+				OwnsAsset.Visible = true
+				Obj:SetAttribute('Owned', true)
+			else
+				OwnsAsset.Visible = false
+				Obj:SetAttribute('Owned', false)
+			end
+		end))
+
+		if (OnDied == nil) then
+			OnDied = Players.LocalPlayer.CharacterRemoving:Connect(function(Model)
+				wait(1)
+				if (SelectedObject ~= nil and SelectedObject ~= ClonedEmote) then
+					module.SelectedEmote(SelectedObject, false)
+					Enabled = false
+				end
+			end)
+		end
+	end
+end
+
+module:SetUp()
+
+local ButtonSearch = Emotes.Search
+local EmoteSearch = Emotes.EmoteSearch
+local UIStroke = EmoteSearch.UIStroke
+local EmoteList = Emotes.EmoteList
+local FilterBy = Emotes.FilterBy
+local Filter = Emotes.Filter
+
+local Focused = false
+local IsEnabled = false
+local Keyword = nil
+local Selected = 'All'
+
+local Colors = {
+	[true] = {
+		UIStrokeColor = FromRGB(71, 255, 129),
+	},
+	[false] = {
+		UIStrokeColor = FromRGB(70, 70, 70),
+	}
+}
+
+local Icons = {
+	['Selected'] = "rbxassetid://9419771465",
+	['Deselect'] = "rbxassetid://9419772387",
+}
+
+local Animate = function(Obj, Time, Direction, Style, Properties, Play, Callback)
+	if (Obj ~= nil) then
+		local TS = game:GetService('TweenService')
+		local Create = TS:Create(
+			Obj,
+			TweenInfo.new(
+				Time,
+				Enum.EasingStyle[Style],
+				Enum.EasingDirection[Direction],
+				0,
+				false,
+				0
+			),
+			Properties
+		)
+		if (Play) then
+			Create:Play()
+		end
+		if (Callback) then
+			Create.Completed:Connect(Callback)
+		end
+		return Create
+	end
+end
+
+local function KeywordSearch(Key)
+	for i,v in pairs(EmoteList:getChildren()) do
+		if (v:IsA('Frame')) then
+			if (Selected == 'Owned') then
+				if (string.find(v.Name:lower(), Key:lower()) and v:GetAttribute('Owned') == true) then
+					v.Visible = true
+					Animate(EmoteList, 0.7, 'Out', 'Quad', {CanvasPosition = Vector2.new(0, 0)}, true)
+				else
+					v.Visible = false
+					Animate(EmoteList, 0.7, 'Out', 'Quad', {CanvasPosition = Vector2.new(0, 0)}, true)
+				end
+			elseif (Selected == 'All') then
+				if (string.find(v.Name:lower(), Key:lower())) then
+					v.Visible = true
+					Animate(EmoteList, 0.7, 'Out', 'Quad', {CanvasPosition = Vector2.new(0, 0)}, true)
+				else
+					v.Visible = false
+					Animate(EmoteList, 0.7, 'Out', 'Quad', {CanvasPosition = Vector2.new(0, 0)}, true)
+				end
+			end
+		end
+	end
+end
+
+local FilterButtons = {
+
+	Owned = {
+		Current = FilterBy.Owned,
+		ButtonIcon = FilterBy.Owned.Icon,
+		Function = function(__)
+			if (Selected ~= __) then
+				Selected = __
+				KeywordSearch(EmoteSearch.Text)
+				IsEnabled = false
+				Animate(FilterBy, 0.6, 'In', 'Quart', {Position = UDim2.new(0.5, 0, 5, 0)}, true)
+			end
+		end,
+	},
+	All = {
+		Current = FilterBy.All,
+		ButtonIcon = FilterBy.All.Icon,
+		Function = function(__)
+			if (Selected ~= __) then
+				Selected = __
+				KeywordSearch(EmoteSearch.Text)
+				IsEnabled = false
+				Animate(FilterBy, 0.6, 'In', 'Quart', {Position = UDim2.new(0.5, 0, 5, 0)}, true)
+			end
+		end,
+	}
+}
+
+local function SetUpFilters()
+
+	local SelectedButton = FilterButtons.All
+
+	Filter.MouseButton1Click:Connect(function()
+		if (IsEnabled == false) then
+			IsEnabled = true
+			Animate(FilterBy, 1, 'Out', 'Quad', {Position = UDim2.new(0.5, 0, 0.5, 0)}, true)
+		elseif (IsEnabled == true) then
+			IsEnabled = false
+			Animate(FilterBy, 0.6, 'In', 'Quart', {Position = UDim2.new(0.5, 0, 5, 0)}, true)
+		end
+	end)
+
+	for FilterName, FilterBtn in pairs(FilterButtons) do
+		FilterBtn.Current.MouseButton1Click:Connect(function()
+			if (SelectedButton ~= nil and SelectedButton.Current ~= FilterBtn.Current) then
+				SelectedButton.ButtonIcon.Image = Icons['Deselect']
+			end
+			SelectedButton = FilterBtn
+			SelectedButton.ButtonIcon.Image = Icons['Selected']
+			SelectedButton.Function(FilterName)
+		end)
+	end
+end
+
+local Focused, NotFocused = Animate(UIStroke, 0.7, 'Out', 'Quad', {Color = Colors[true].UIStrokeColor}), Animate(UIStroke, 0.7, 'Out', 'Quad', {Color = Colors[false].UIStrokeColor})
+
+EmoteSearch.FocusLost:Connect(function(Enter)
+	if (Enter) then
+		IsFocused = false
+		if (EmoteSearch.Text:match('.')) then
+			Keyword = EmoteSearch.Text
+			KeywordSearch(Keyword)
+			NotFocused:Play()
+		else
+			KeywordSearch(EmoteSearch.Text)
+			NotFocused:Play()
+		end
+	else
+		IsFocused = false
+	end
+end)
+
+EmoteSearch.Focused:Connect(function()
+	IsFocused = true
+end)
+
+EmoteSearch.MouseEnter:Connect(function()
+	if (IsFocused ~= true) then
+		Focused:Play()
+	end
+end)
+
+EmoteSearch.MouseLeave:Connect(function()
+	if (IsFocused) then
+		return
+	else
+		NotFocused:Play()
+	end
+end)
+
+ButtonSearch.MouseButton1Click:Connect(function()
+	Keyword = EmoteSearch.Text
+	KeywordSearch(Keyword)
+	NotFocused:Play()
+	IsFocused = false
+end)
+
+SetUpFilters()
+
+MainEmoteButton.MouseButton1Click:Connect(function()
+	if (Enabled == false) then
+		Enabled = true
+		SetAll(Enabled)
+		Animate(Emotes, 0.5, 'Out', 'Sine', {Position = UDim2.new(0.5, 0,0.45, 0)}, true)
+		SelectedBtn(MainEmoteButton, Enabled)
+	else
+		Enabled = false
+		SetAll(Enabled)
+		Animate(Emotes, 0.5, 'Out', 'Sine', {Position = UDim2.new(0.5, 0,5, 0)}, true)
+		SelectedBtn(MainEmoteButton, Enabled)
+	end
+end)
